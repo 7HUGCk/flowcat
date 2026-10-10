@@ -86,4 +86,17 @@ aliasedJSON["networks"] = oldNetworks
 let normalized = try JSONDecoder().decode(Ledger.self, from: JSONSerialization.data(withJSONObject: aliasedJSON))
 expect(normalized.networks["wifi:Phone1"]?.name == "Phone1", "upgrade restores the exact stored SSID rather than manual labels")
 expect(normalized.networks["legacy"] == nil && normalized.sum(keys: ["2026-10-10"]).physical.total == 2800, "legacy classification hidden with original totals intact")
-print("All 30 checks passed.")
+func release(_ version: String, url: String? = nil, draft: Bool = false, prerelease: Bool = false) -> ReleaseInfo {
+    let name = "FlowCat-\(version)-arm64.zip"
+    return ReleaseInfo(tag_name: "v\(version)", body: nil, draft: draft, prerelease: prerelease,
+        assets: [ReleaseInfo.Asset(name: name, browser_download_url: URL(string: url ?? "https://github.com/tab16360/flowcat/releases/download/v\(version)/\(name)")!)])
+}
+expect(release("1.3.10").isNewer(than: "1.3.9"), "updates compare numeric version components")
+expect(!release("1.3.4").isNewer(than: "1.3.5"), "updates never offer a downgrade")
+expect(!release("1.3.5").isNewer(than: "1.3.5"), "current version does not offer an update")
+expect(release("1.3.5").downloadURL != nil, "updates select the matching arm64 asset")
+expect(release("1.3.5", url: "https://example.com/package.zip").downloadURL == nil, "updates reject a foreign download host")
+expect(release("1.3.5", url: "https://github.com/other/repo/releases/download/v1.3.5/FlowCat-1.3.5-arm64.zip").downloadURL == nil, "updates reject assets from another repository")
+expect(release("1.3.5", prerelease: true).downloadURL == nil && !release("1.3.5", draft: true).isNewer(than: "1.3.4"), "updates exclude drafts and prereleases")
+expect(!ReleaseInfo.validVersion("1.3.5-beta") && !ReleaseInfo.validVersion("1..5"), "updates reject malformed stable versions")
+print("All 38 checks passed.")

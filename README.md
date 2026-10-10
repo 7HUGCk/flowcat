@@ -4,7 +4,7 @@
 
 **应用体积约 1 MB · macOS 13+ · Apple Silicon · MIT**
 
-[下载最新版](https://github.com/tab16360/flowcat/releases/latest) · [介绍站点](https://tab16360.github.io/flowcat/) · [使用说明](docs/guide.md) · [更新记录](CHANGELOG.md)
+[下载最新版](https://github.com/tab16360/flowcat/releases/latest/download/FlowCat-arm64.zip) · [介绍站点](https://tab16360.github.io/flowcat/) · [使用说明](docs/guide.md) · [更新记录](CHANGELOG.md)
 
 ![流量喵界面示意：累计流量、Wi-Fi 筛选与进程排行](docs/assets/product.svg)
 
@@ -32,7 +32,9 @@
 
 ## 安装
 
-1. 从 [Releases](https://github.com/tab16360/flowcat/releases/latest) 下载 `FlowCat-版本-arm64.zip`。
+网站与下载链接直接获取最新安装 ZIP。应用右键菜单或“更多”菜单提供“检查更新”，有新版可直接下载；退出旧版后替换应用即可，历史保留。检查由你手动触发，访问 GitHub 版本接口，不发送统计记录。
+
+1. 点击 [下载安装包](https://github.com/tab16360/flowcat/releases/latest/download/FlowCat-arm64.zip) 下载 `FlowCat-版本-arm64.zip`。
 2. 解压，将 `流量喵.app` 拖入“应用程序”，双击启动。
 3. 点击菜单栏图标。首次运行约 10 秒用于建立基线；“更多”菜单可设置登录启动。
 4. 无法读取 Wi-Fi 名称时会请求系统定位权限。你可以拒绝，统计仍在全部网络下进行，应用不会请求位置坐标。
@@ -65,7 +67,7 @@ open build/流量喵.app
 
 ```sh
 bash scripts/package.sh
-# 输出 dist/FlowCat-1.3.4-arm64.zip 及其 SHA-256
+# 输出 dist/FlowCat-1.3.5-arm64.zip 及其 SHA-256
 ```
 
 ## 项目结构
@@ -89,6 +91,6 @@ CI 检查核心统计并生成安装包。`main` 上的站点更新由 GitHub Pa
 
 ## 验证状态
 
-1.3.4 本机构建与签名检查通过，30 项核心统计检查通过。本机采样进程已运行并用于资源观察；图形自动化未获该应用访问权限，完整菜单栏交互、权限弹窗和面板开关循环尚未验收。图示不能替代运行测试。
+1.3.5 本机构建与签名检查通过，38 项核心与更新检查通过。本机采样进程已运行并用于资源观察；图形自动化未获该应用访问权限，完整菜单栏交互、权限弹窗和面板开关循环尚未验收。图示不能替代运行测试。
 
 采用 [MIT 许可证](LICENSE)。

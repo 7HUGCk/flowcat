@@ -68,6 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         let login = add("登录时自动启动", action: #selector(toggleLogin))
         login.state = monitor.loginEnabled ? .on : .off
         _ = add("导出 CSV…", action: #selector(exportCSV))
+        _ = add("检查更新…", action: #selector(checkUpdates))
         menu.addItem(.separator())
         _ = add("退出流量喵", action: #selector(quit))
         // Let the status item anchor its menu below the menu bar. A generic
@@ -88,6 +89,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
             self.monitor.clearIcons()
         }
     }
+    @MainActor @objc private func checkUpdates() { UpdateChecker.shared.check() }
     @objc private func toggleRecording() { monitor.togglePause() }
     @objc private func exportCSV() {
         NSApp.activate(ignoringOtherApps: true)
