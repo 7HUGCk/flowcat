@@ -23,8 +23,8 @@ gh workflow run pages.yml
 6. 等待主分支 CI 成功，创建并推送版本标签：
 
 ```sh
-git tag -a v1.3.3 -m 'Release 1.3.3'
-git push origin v1.3.3
+git tag -a v1.3.4 -m 'Release 1.3.4'
+git push origin v1.3.4
 ```
 
 Release workflow 自动检查版本、运行核心检查、构建 arm64 ZIP 并发布附带 SHA-256 的 Release。避免同时使用工作流和手动命令创建同一 Release。

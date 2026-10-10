@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import ServiceManagement
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopoverDelegate {
     var item: NSStatusItem!
     let monitor = TrafficMonitor()
     let popover = NSPopover()
@@ -23,7 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
         popover.behavior = .transient
-        configurePanel()
+        popover.delegate = self
         monitor.onUpdate = { [weak self] in
             guard let self else { return }
             self.item.button?.title = self.monitor.paused ? " 暂停" : " ↓\(volume(UInt64(max(0, self.monitor.download))))/s"
@@ -78,6 +78,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func menuDidClose(_ menu: NSMenu) {
         // Restore the button action so the next left click opens statistics.
         if item.menu === menu { item.menu = nil }
+    }
+    func popoverDidClose(_ notification: Notification) {
+        // Release the view graph and decoded icons while only the sampler runs.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.popover.isShown else { return }
+            self.popover.contentViewController = nil
+            self.hosting = nil
+            self.monitor.clearIcons()
+        }
     }
     @objc private func toggleRecording() { monitor.togglePause() }
     @objc private func exportCSV() {

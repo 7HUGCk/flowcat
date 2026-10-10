@@ -189,6 +189,7 @@ struct LedgerView: View {
             Text(String(index + 1)).font(.system(size: 10, weight: .medium)).foregroundStyle(palette.secondary)
                 .frame(width: 14, height: 27).monospacedDigit().accessibilityHidden(true)
             processIcon(name).frame(width: 27, height: 27).accessibilityHidden(true)
+                .onAppear { monitor.loadIcon(name) }
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(name).font(.system(size: 12, weight: .medium)).lineLimit(1).truncationMode(.middle).help(name)

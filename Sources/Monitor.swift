@@ -46,6 +46,8 @@ final class TrafficMonitor: ObservableObject {
     private var oldTime: Date?
     private var lastSaved = Date.distantPast
     private var oldNetwork: NetworkContext?
+    private var appPaths: [String: String] = [:]
+    private var iconOrder: [String] = []
     private let detector = NetworkDetector()
     private let queue = DispatchQueue(label: "local.trafficledger.sampling", qos: .utility)
     let file: URL
@@ -83,6 +85,27 @@ final class TrafficMonitor: ObservableObject {
         if enabled { try SMAppService.mainApp.register() }
         else { try SMAppService.mainApp.unregister() }
     }
+    func clearIcons() { icons.removeAll(); iconOrder.removeAll() }
+    func loadIcon(_ name: String) {
+        guard icons[name] == nil, let path = appPaths[name] else { return }
+        let thumbnail: NSImage? = autoreleasepool {
+            guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 64, pixelsHigh: 64,
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+                let context = NSGraphicsContext(bitmapImageRep: bitmap) else { return nil }
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = context
+            NSWorkspace.shared.icon(forFile: path).draw(in: NSRect(x: 0, y: 0, width: 64, height: 64),
+                from: .zero, operation: .copy, fraction: 1)
+            NSGraphicsContext.restoreGraphicsState()
+            guard let image = bitmap.cgImage else { return nil }
+            return NSImage(cgImage: image, size: NSSize(width: 32, height: 32))
+        }
+        guard let thumbnail else { return }
+        if iconOrder.count >= 64 { icons.removeValue(forKey: iconOrder.removeFirst()) }
+        iconOrder.append(name)
+        icons[name] = thumbnail
+    }
     func start() {
         detector.onAuthorizationChange = { [weak self] in self?.oldTime = nil; self?.sample() }
         sample()
@@ -106,11 +129,13 @@ final class TrafficMonitor: ObservableObject {
         if !context.identified { selectedNetwork = "__all__" }
         let samplingNetwork = context
         queue.async { [weak self] in
+          autoreleasepool {
             let proc = command("/usr/bin/nettop", ["-P", "-L", "1", "-n", "-J", "bytes_in,bytes_out"])
             let net = command("/usr/sbin/netstat", ["-ibn"])
             let names = command("/bin/ps", ["-axo", "pid=,comm="])
             let now = Date()
             DispatchQueue.main.async { self?.apply(proc: proc, net: net, names: names.text, now: now, network: samplingNetwork) }
+          }
         }
     }
     private func processNames(_ text: String) -> [String: (String, String)] {
@@ -137,6 +162,7 @@ final class TrafficMonitor: ObservableObject {
             download = 0; upload = 0; oldTime = nil; onUpdate?(); return
         }
         let mapping = processNames(names)
+        for (_, item) in mapping where item.1.hasSuffix(".app") { appPaths[item.0] = item.1 }
         if let previous = oldTime {
             let interval = now.timeIntervalSince(previous)
             // Do not attribute sleep, pause or missed samples as observed history.
@@ -158,7 +184,6 @@ final class TrafficMonitor: ObservableObject {
                     let delta = value.bytes.difference(from: old.bytes)
                     guard delta.total > 0 else { continue }
                     var sum = deltas[name] ?? Bytes(); sum.add(delta); deltas[name] = sum
-                    if icons[name] == nil, let path = item?.1 { icons[name] = NSWorkspace.shared.icon(forFile: path) }
                 }
                 let bucket = activeInterfaces.count > 1
                     ? NetworkContext(key: "__all__", name: "全部网络", identified: false) : network
