@@ -90,11 +90,14 @@ struct LedgerView: View {
             HStack(spacing: 12) {
                 Picker("统计时间", selection: $monitor.period) {
                     Text("今日").tag(0); Text("昨日").tag(1); Text("本月").tag(2)
-                }.pickerStyle(.segmented).controlSize(.small).frame(maxWidth: .infinity)
+                }.pickerStyle(.segmented).labelsHidden().controlSize(.regular)
+                    .frame(maxWidth: .infinity).frame(height: 28)
+                    .accessibilityLabel("统计时间")
                 Picker("统计网络", selection: $monitor.selectedNetwork) {
                     Text("全部网络").tag("__all__")
                     ForEach(monitor.networkNames, id: \.self) { Text($0).tag($0) }
-                }.labelsHidden().controlSize(.small).frame(width: min(160, panelSize.width * 0.36))
+                }.labelsHidden().controlSize(.regular)
+                    .frame(width: min(144, panelSize.width * 0.32), height: 28)
                     .help("按 Wi-Fi 名称筛选历史流量").accessibilityLabel("统计网络")
             }
             Label(monitor.currentNetwork.identified ? "当前连接 · \(monitor.currentNetwork.name)" : "正在按全部网络记录",
