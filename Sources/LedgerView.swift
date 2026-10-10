@@ -91,7 +91,7 @@ struct LedgerView: View {
                 Picker("统计时间", selection: $monitor.period) {
                     Text("今日").tag(0); Text("昨日").tag(1); Text("本月").tag(2)
                 }.pickerStyle(.segmented).labelsHidden().controlSize(.regular)
-                    .frame(maxWidth: .infinity).frame(height: 28)
+                    .frame(maxWidth: .infinity, alignment: .leading).frame(height: 28)
                     .accessibilityLabel("统计时间")
                 Picker("统计网络", selection: $monitor.selectedNetwork) {
                     Text("全部网络").tag("__all__")
