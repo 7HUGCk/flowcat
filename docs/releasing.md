@@ -1,0 +1,36 @@
+# 发布指南
+
+## 首次发布
+
+1. `gh auth login -h github.com` 登录目标账号。
+2. 核对 README 与 `docs/index.html` 的 GitHub 账号和仓库链接。
+3. `bash scripts/test.sh`、`bash scripts/package.sh`。
+4. `git init -b main`，提交项目，然后创建公开仓库：
+
+```sh
+gh repo create traffic-ledger --public --source . --remote origin --push --description '原生 macOS 菜单栏流量账本：进程排行、按 Wi-Fi 统计、今日/昨日/月流量'
+```
+
+5. 通过 GitHub 设置 → Pages → Source 选择 GitHub Actions；也可通过 API：
+
+```sh
+gh api --method POST repos/OWNER/traffic-ledger/pages -f build_type=workflow
+gh workflow run pages.yml
+```
+
+6. 等待主分支 CI 成功，创建并推送版本标签：
+
+```sh
+git tag -a v1.3.0 -m 'Release 1.3.0'
+git push origin v1.3.0
+```
+
+Release workflow 自动检查版本、运行核心检查、构建 arm64 ZIP 并发布附带 SHA-256 的 Release。避免同时使用工作流和手动命令创建同一 Release。
+
+## 后续更新
+
+更新 `Info.plist` 的版本和构建号、更新日志、Release 说明以及介绍页版本。核心逻辑修改运行检查；真实 Mac 验证采集、睡眠和权限。push main 后确认 CI，再推送匹配版本标签。
+
+README 图示是带标注的示例，替换为真实截图时去除个人 SSID、应用和路径。不要提交运行历史或个人配置。
+
+当前构建使用临时签名。Developer ID 签名和 Apple 公证需开发者证书与账号，尚未配置；不要把私钥或证书提交仓库。
