@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.title = " ↓0 KB/s"
             button.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
             button.target = self; button.action = #selector(toggle)
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
         popover.behavior = .transient
         configurePanel()
@@ -31,13 +32,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         started = true; monitor.start()
     }
     @objc func toggle() {
+        if let event = NSApp.currentEvent,
+           event.type == .rightMouseUp || event.modifierFlags.contains(.control) {
+            showContextMenu()
+            return
+        }
         if popover.isShown { popover.performClose(nil) }
-        else if let button = item.button {
+        else { openStatistics() }
+    }
+    @objc private func openStatistics() {
+        monitor.refreshLoginStatus()
+        if popover.isShown { return }
+        if let button = item.button {
             configurePanel()
             NSApp.activate(ignoringOtherApps: true)
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         }
     }
+    private func showContextMenu() {
+        guard let button = item.button else { return }
+        popover.performClose(nil)
+        monitor.refreshLoginStatus()
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        func add(_ title: String, action: Selector) -> NSMenuItem {
+            let entry = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            entry.target = self
+            menu.addItem(entry)
+            return entry
+        }
+        _ = add("打开统计面板", action: #selector(openStatistics))
+        _ = add(monitor.paused ? "继续记录" : "暂停记录", action: #selector(toggleRecording))
+        menu.addItem(.separator())
+        let login = add("登录时自动启动", action: #selector(toggleLogin))
+        login.state = monitor.loginEnabled ? .on : .off
+        _ = add("导出 CSV…", action: #selector(exportCSV))
+        menu.addItem(.separator())
+        _ = add("退出流量喵", action: #selector(quit))
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.minY), in: button)
+    }
+    @objc private func toggleRecording() { monitor.togglePause() }
+    @objc private func exportCSV() {
+        NSApp.activate(ignoringOtherApps: true)
+        monitor.export()
+    }
+    @objc private func toggleLogin() {
+        do { try monitor.setLogin(!monitor.loginEnabled) }
+        catch {
+            NSApp.activate(ignoringOtherApps: true)
+            let alert = NSAlert()
+            alert.messageText = "无法设置登录启动"
+            alert.informativeText = "请先把应用放入“应用程序”，再重试。\n\(error.localizedDescription)"
+            alert.addButton(withTitle: "好")
+            alert.runModal()
+        }
+    }
+    @objc private func quit() { monitor.save(); NSApp.terminate(nil) }
     private func configurePanel() {
         let screen = item.button?.window?.screen ?? NSScreen.main
         let frame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 800)

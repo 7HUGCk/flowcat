@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import ServiceManagement
 
 struct CommandResult { var text: String; var error: String; var success: Bool }
 func command(_ path: String, _ arguments: [String]) -> CommandResult {
@@ -34,6 +35,7 @@ final class TrafficMonitor: ObservableObject {
     @Published var selectedNetwork = "__all__"
     @Published var currentNetwork = NetworkContext(key: "__all__", name: "全部网络", identified: false)
     @Published var paused = false
+    @Published var loginEnabled = SMAppService.mainApp.status == .enabled
     @Published var lastSample: Date?
     @Published var icons: [String: NSImage] = [:]
     var onUpdate: (() -> Void)?
@@ -75,6 +77,12 @@ final class TrafficMonitor: ObservableObject {
         return Array(Set(ledger.networks.values.map(\.name) + [currentNetwork.name])).sorted()
     }
     var rows: [(String, Bytes)] { selected.processes.sorted { $0.value.total > $1.value.total } }
+    func refreshLoginStatus() { loginEnabled = SMAppService.mainApp.status == .enabled }
+    func setLogin(_ enabled: Bool) throws {
+        defer { refreshLoginStatus() }
+        if enabled { try SMAppService.mainApp.register() }
+        else { try SMAppService.mainApp.unregister() }
+    }
     func start() {
         detector.onAuthorizationChange = { [weak self] in self?.oldTime = nil; self?.sample() }
         sample()

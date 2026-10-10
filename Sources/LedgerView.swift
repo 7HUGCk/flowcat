@@ -24,7 +24,6 @@ struct LedgerView: View {
     @State private var search = ""
     @State private var explanation = false
     @State private var order = 0
-    @State private var login = SMAppService.mainApp.status == .enabled
     @State private var loginError = ""
     private var palette: Palette { Palette(dark: scheme == .dark) }
     private var compact: Bool { panelSize.height < 540 }
@@ -76,7 +75,7 @@ struct LedgerView: View {
             }.buttonStyle(.plain).help(monitor.paused ? "继续记录" : "暂停记录")
                 .accessibilityLabel(monitor.paused ? "继续记录" : "暂停记录")
             Menu {
-                Toggle("登录时自动启动", isOn: $login).onChange(of: login) { enabled in setLogin(enabled) }
+                Toggle("登录时自动启动", isOn: Binding(get: { monitor.loginEnabled }, set: { setLogin($0) }))
                 Button("导出 CSV…") { monitor.export() }
                 Divider()
                 Button("退出流量喵") { monitor.save(); NSApp.terminate(nil) }
@@ -280,11 +279,10 @@ struct LedgerView: View {
     }
     private func setLogin(_ enabled: Bool) {
         do {
-            if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+            try monitor.setLogin(enabled)
             loginError = ""
         } catch {
             loginError = "请先把应用放入“应用程序”，再设置登录启动。"
-            login = SMAppService.mainApp.status == .enabled
         }
     }
 }
