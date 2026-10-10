@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import ServiceManagement
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var item: NSStatusItem!
     let monitor = TrafficMonitor()
     let popover = NSPopover()
@@ -54,6 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.performClose(nil)
         monitor.refreshLoginStatus()
         let menu = NSMenu()
+        menu.delegate = self
         menu.autoenablesItems = false
         func add(_ title: String, action: Selector) -> NSMenuItem {
             let entry = NSMenuItem(title: title, action: action, keyEquivalent: "")
@@ -69,7 +70,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = add("导出 CSV…", action: #selector(exportCSV))
         menu.addItem(.separator())
         _ = add("退出流量喵", action: #selector(quit))
-        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.minY), in: button)
+        // Let the status item anchor its menu below the menu bar. A generic
+        // popUp at the button origin can clip rows against the screen edge.
+        item.menu = menu
+        button.performClick(nil)
+    }
+    func menuDidClose(_ menu: NSMenu) {
+        // Restore the button action so the next left click opens statistics.
+        if item.menu === menu { item.menu = nil }
     }
     @objc private func toggleRecording() { monitor.togglePause() }
     @objc private func exportCSV() {
