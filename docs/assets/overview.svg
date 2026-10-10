@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="720" viewBox="0 0 1000 720" role="img" aria-labelledby="title desc">
-<title id="title">流量账本界面示意</title><desc id="desc">示例数据：今日累计2.81GB，按真实Wi-Fi名称筛选，列表展示各进程流量。</desc>
+<title id="title">流量喵界面示意</title><desc id="desc">示例数据：今日累计2.81GB，按真实Wi-Fi名称筛选，列表展示各进程流量。</desc>
 <defs><style>text{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;fill:#1c2633}.muted{fill:#526174}.blue{fill:#245cc4}.small{font-size:16px}.medium{font-size:20px}</style></defs>
 <rect width="1000" height="720" rx="24" fill="#e8eef6"/>
-<text x="58" y="105" font-size="44" font-weight="650">流量，终于看得见。</text><text x="60" y="149" class="muted medium">菜单栏里的本地流量账本</text>
+<text x="58" y="105" font-size="44" font-weight="650">流量，终于看得见。</text><text x="60" y="149" class="muted medium">菜单栏里的本地流量喵</text>
 <text x="60" y="238" class="small muted">01 / 看整机累计</text><text x="60" y="276" font-size="26">今日 · 昨日 · 本月</text>
 <text x="60" y="359" class="small muted">02 / 找消耗来源</text><text x="60" y="397" font-size="26">搜索进程，按流量排序</text>
 <text x="60" y="480" class="small muted">03 / 按连接分别查看</text><text x="60" y="518" font-size="26">使用真实 Wi-Fi 名称</text>
 <text x="60" y="650" class="small muted">界面示意 · 示例数据 · 非采集截图</text>
 <rect x="485" y="29" width="457" height="657" rx="20" fill="#f5f7fa" stroke="#d6dde7"/>
-<text x="509" y="70" font-size="21" font-weight="650">▥ 流量账本</text><text x="807" y="69" class="small muted">记录中  Ⅱ  ···</text>
+<text x="509" y="70" font-size="21" font-weight="650">▥ 流量喵</text><text x="807" y="69" class="small muted">记录中  Ⅱ  ···</text>
 <rect x="509" y="90" width="246" height="35" rx="7" fill="#e2e8f1"/><rect x="512" y="93" width="78" height="29" rx="5" fill="#fff"/>
 <text x="535" y="115" class="small">今日</text><text x="615" y="115" class="small muted">昨日</text><text x="696" y="115" class="small muted">本月</text>
 <text x="775" y="113" class="small">全部网络 ⌄</text><text x="509" y="151" class="small muted">当前连接 · Studio Wi-Fi</text>

@@ -65,7 +65,7 @@ struct LedgerView: View {
                 .font(.system(size: 15, weight: .semibold)).foregroundStyle(palette.accent)
                 .frame(width: 30, height: 30).background(palette.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 8)).accessibilityHidden(true)
-            Text("流量账本").font(.system(size: 14, weight: .semibold))
+            Text("流量喵").font(.system(size: 14, weight: .semibold))
             Spacer()
             Label(monitor.paused ? "已暂停" : hasError ? "采集异常" : monitor.lastSample == nil ? "准备中" : "记录中",
                   systemImage: monitor.paused ? "pause.circle" : hasError ? "exclamationmark.circle" : "record.circle")
@@ -79,7 +79,7 @@ struct LedgerView: View {
                 Toggle("登录时自动启动", isOn: $login).onChange(of: login) { enabled in setLogin(enabled) }
                 Button("导出 CSV…") { monitor.export() }
                 Divider()
-                Button("退出流量账本") { monitor.save(); NSApp.terminate(nil) }
+                Button("退出流量喵") { monitor.save(); NSApp.terminate(nil) }
             } label: {
                 Image(systemName: "ellipsis").font(.system(size: 14, weight: .medium)).frame(width: 22, height: 26)
             }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().help("更多操作")

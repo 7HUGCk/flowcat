@@ -15,7 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if siblings.contains(where: { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }) { NSApp.terminate(nil); return }
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "chart.bar.xaxis", accessibilityDescription: "流量账本")
+            button.image = NSImage(systemSymbolName: "chart.bar.xaxis", accessibilityDescription: "流量喵")
             button.imagePosition = .imageLeading
             button.title = " ↓0 KB/s"
             button.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
@@ -26,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         monitor.onUpdate = { [weak self] in
             guard let self else { return }
             self.item.button?.title = self.monitor.paused ? " 暂停" : " ↓\(volume(UInt64(max(0, self.monitor.download))))/s"
-            self.item.button?.toolTip = "流量账本 · 今日 \(volume(self.monitor.ledger.days[DateKeys.day(Date())]?.physical.total ?? 0))"
+            self.item.button?.toolTip = "流量喵 · 今日 \(volume(self.monitor.ledger.days[DateKeys.day(Date())]?.physical.total ?? 0))"
         }
         started = true; monitor.start()
     }

@@ -2,7 +2,7 @@
 
 ## 首次发布
 
-本机正常终端中已登录 GitHub 后，可直接运行 `bash scripts/publish.sh`。脚本使用当前账号创建公开的 `traffic-ledger` 仓库，更新账号链接、执行检查与打包、启用 Pages 并推送版本标签。远端工作流完成后才有可用的站点和 Release。仓库已有 origin 时脚本会停止，请按下面步骤继续，避免重复创建。
+本机正常终端中已登录 GitHub 后，可直接运行 `bash scripts/publish.sh`。脚本使用当前账号创建公开的 `flowcat` 仓库，更新账号链接、执行检查与打包、启用 Pages 并推送版本标签。远端工作流完成后才有可用的站点和 Release。仓库已有 origin 时脚本会停止，请按下面步骤继续，避免重复创建。
 
 1. `gh auth login -h github.com` 登录目标账号。
 2. 核对 README 与 `docs/index.html` 的 GitHub 账号和仓库链接。
@@ -10,13 +10,13 @@
 4. `git init -b main`，提交项目，然后创建公开仓库：
 
 ```sh
-gh repo create traffic-ledger --public --source . --remote origin --push --description '原生 macOS 菜单栏流量账本：进程排行、按 Wi-Fi 统计、今日/昨日/月流量'
+gh repo create flowcat --public --source . --remote origin --push --description '原生 macOS 菜单栏流量喵：进程排行、按 Wi-Fi 统计、今日/昨日/月流量'
 ```
 
 5. 通过 GitHub 设置 → Pages → Source 选择 GitHub Actions；也可通过 API：
 
 ```sh
-gh api --method POST repos/OWNER/traffic-ledger/pages -f build_type=workflow
+gh api --method POST repos/OWNER/flowcat/pages -f build_type=workflow
 gh workflow run pages.yml
 ```
 

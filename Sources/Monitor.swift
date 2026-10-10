@@ -51,7 +51,7 @@ final class TrafficMonitor: ObservableObject {
     private var storeWritable = true
     init(file: URL? = nil) {
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("流量账本", isDirectory: true)
+            .appendingPathComponent("流量账本", isDirectory: true) // Keep the existing history directory across the rename.
         self.file = file ?? directory.appendingPathComponent("ledger.json")
         if FileManager.default.fileExists(atPath: self.file.path) {
             do { self.ledger = try JSONDecoder().decode(Ledger.self, from: Data(contentsOf: self.file)) }
@@ -173,7 +173,7 @@ final class TrafficMonitor: ObservableObject {
         } catch { status = "统计保存失败：\(error.localizedDescription)" }
     }
     func export() {
-        let panel = NSSavePanel(); panel.nameFieldStringValue = "流量账本-\(DateKeys.day(Date())).csv"
+        let panel = NSSavePanel(); panel.nameFieldStringValue = "流量喵-\(DateKeys.day(Date())).csv"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         var content = "日期,网络,分类,下载字节,上传字节,监控秒数\n"
         for key in ledger.days.keys.sorted() {

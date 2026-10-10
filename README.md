@@ -1,12 +1,12 @@
-# 流量账本 · Traffic Ledger
+# 流量喵 · FlowCat
 
 一个原生 macOS 菜单栏流量工具。点击菜单栏，查看整机流量和进程排行，帮助了解手机热点、远程桌面与日常开发的流量消耗。
 
 **macOS 13+ · Apple Silicon · Swift / SwiftUI · MIT**
 
-[下载最新版](https://github.com/tab16360/traffic-ledger/releases/latest) · [介绍站点](https://tab16360.github.io/traffic-ledger/) · [使用说明](docs/guide.md) · [更新记录](CHANGELOG.md)
+[下载最新版](https://github.com/tab16360/flowcat/releases/latest) · [介绍站点](https://tab16360.github.io/flowcat/) · [使用说明](docs/guide.md) · [更新记录](CHANGELOG.md)
 
-![流量账本界面示意：累计流量、Wi-Fi 筛选与进程排行](docs/assets/overview.svg)
+![流量喵界面示意：累计流量、Wi-Fi 筛选与进程排行](docs/assets/overview.svg)
 
 *上图为界面示意，使用示例数据，并非实际采集截图。*
 
@@ -25,8 +25,8 @@
 
 ## 安装
 
-1. 从 [Releases](https://github.com/tab16360/traffic-ledger/releases/latest) 下载 `TrafficLedger-版本-arm64.zip`。
-2. 解压，将 `流量账本.app` 拖入“应用程序”，双击启动。
+1. 从 [Releases](https://github.com/tab16360/flowcat/releases/latest) 下载 `FlowCat-版本-arm64.zip`。
+2. 解压，将 `流量喵.app` 拖入“应用程序”，双击启动。
 3. 点击菜单栏图标。首次运行约 10 秒用于建立基线；“更多”菜单可设置登录启动。
 4. 无法读取 Wi-Fi 名称时会请求系统定位权限。你可以拒绝，统计仍在全部网络下进行，应用不会请求位置坐标。
 
@@ -47,18 +47,18 @@
 需要 macOS 13+ 和 Xcode Command Line Tools，不需要 Node、pnpm 或第三方库。
 
 ```sh
-git clone https://github.com/tab16360/traffic-ledger.git
-cd traffic-ledger
+git clone https://github.com/tab16360/flowcat.git
+cd flowcat
 bash scripts/test.sh
 bash scripts/build.sh
-open build/流量账本.app
+open build/流量喵.app
 ```
 
 构建默认 arm64；可使用 `ARCH=x86_64 bash scripts/build.sh` 尝试 Intel 构建，当前未进行 Intel 运行验收。创建发布包：
 
 ```sh
 bash scripts/package.sh
-# 输出 dist/TrafficLedger-1.3.0-arm64.zip 及其 SHA-256
+# 输出 dist/FlowCat-1.3.0-arm64.zip 及其 SHA-256
 ```
 
 ## 项目结构

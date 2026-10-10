@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 command -v gh >/dev/null || { echo 'Install GitHub CLI first: brew install gh' >&2; exit 1; }
 owner=$(gh api user --jq .login)
-repo="$owner/traffic-ledger"
+repo="$owner/flowcat"
 if git remote get-url origin >/dev/null 2>&1; then
   echo 'origin already exists; follow docs/releasing.md to continue without creating another repository.' >&2
   exit 1
@@ -28,9 +28,9 @@ PY
 fi
 bash scripts/test.sh
 bash scripts/package.sh
-gh repo create "$repo" --public --source . --remote origin --push --description '原生 macOS 菜单栏流量账本：进程排行、按 Wi-Fi 统计、今日/昨日/月流量'
+gh repo create "$repo" --public --source . --remote origin --push --description '原生 macOS 菜单栏流量喵：进程排行、按 Wi-Fi 统计、今日/昨日/月流量'
 gh api --method POST "repos/$repo/pages" -f build_type=workflow >/dev/null
-gh repo edit "$repo" --homepage "https://$owner.github.io/traffic-ledger/"
+gh repo edit "$repo" --homepage "https://$owner.github.io/flowcat/"
 gh workflow run pages.yml --repo "$repo" --ref main
 git tag -a "v$version" -m "Release $version"
 git push origin "v$version"
