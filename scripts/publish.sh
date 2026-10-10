@@ -1,0 +1,39 @@
+#!/bin/bash
+# Run in a normal macOS terminal with GitHub CLI authenticated.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+command -v gh >/dev/null || { echo 'Install GitHub CLI first: brew install gh' >&2; exit 1; }
+owner=$(gh api user --jq .login)
+repo="$owner/traffic-ledger"
+if git remote get-url origin >/dev/null 2>&1; then
+  echo 'origin already exists; follow docs/releasing.md to continue without creating another repository.' >&2
+  exit 1
+fi
+if [ -n "$(git status --porcelain)" ]; then
+  echo 'Working tree must be clean before publishing.' >&2
+  exit 1
+fi
+version=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Info.plist)
+if [ "$owner" != tab16360 ]; then
+  python3 - "$owner" <<'PY'
+from pathlib import Path
+import sys
+owner = sys.argv[1]
+for filename in ['README.md', 'docs/index.html']:
+    p = Path(filename)
+    p.write_text(p.read_text().replace('github.com/tab16360/', f'github.com/{owner}/').replace('tab16360.github.io', f'{owner}.github.io'))
+PY
+  git add README.md docs/index.html
+  git commit -m '设置项目发布链接'
+fi
+bash scripts/test.sh
+bash scripts/package.sh
+gh repo create "$repo" --public --source . --remote origin --push --description '原生 macOS 菜单栏流量账本：进程排行、按 Wi-Fi 统计、今日/昨日/月流量'
+gh api --method POST "repos/$repo/pages" -f build_type=workflow >/dev/null
+gh repo edit "$repo" --homepage "https://$owner.github.io/traffic-ledger/"
+gh workflow run pages.yml --repo "$repo" --ref main
+git tag -a "v$version" -m "Release $version"
+git push origin "v$version"
+echo "Repository: https://github.com/$repo"
+echo "Actions: https://github.com/$repo/actions"
+echo "Release and Pages have been triggered; check Actions for completion."
