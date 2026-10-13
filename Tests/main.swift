@@ -99,4 +99,15 @@ expect(release("1.3.5", url: "https://example.com/package.zip").downloadURL == n
 expect(release("1.3.5", url: "https://github.com/other/repo/releases/download/v1.3.5/FlowCat-1.3.5-arm64.zip").downloadURL == nil, "updates reject assets from another repository")
 expect(release("1.3.5", prerelease: true).downloadURL == nil && !release("1.3.5", draft: true).isNewer(than: "1.3.4"), "updates exclude drafts and prereleases")
 expect(!ReleaseInfo.validVersion("1.3.5-beta") && !ReleaseInfo.validVersion("1..5"), "updates reject malformed stable versions")
-print("All 38 checks passed.")
+let relayHistory: [String: Bytes] = [
+    "verge-mihomo": Bytes(received: 100, sent: 100),
+    "Google Chrome": Bytes(received: 100),
+    "io.tailscale.ipn.macsys.network-extension": Bytes(sent: 50),
+    "My VPN Notes": Bytes(received: 5)
+]
+expect(ProcessTraffic.rows(relayHistory, relay: false).count == 2, "application view excludes known forwarding processes")
+expect(ProcessTraffic.rows(relayHistory, relay: true).count == 2, "relay view retains proxy and tunnel counters")
+expect(!ProcessTraffic.isRelay("My VPN Notes") && !ProcessTraffic.isRelay("clash-game"), "unrelated names are not hidden by substring matching")
+expect(ProcessTraffic.isRelay("Clash Verge") && ProcessTraffic.isRelay("MIHOMO"), "known app and core names use case-insensitive classification")
+expect(ProcessTraffic.rows(relayHistory, relay: false).first(where: { $0.0 == "Google Chrome" })?.1.received == 100 && relayHistory["verge-mihomo"]?.total == 200, "presentation preserves app bytes and original relay history without redistribution")
+print("All 43 checks passed.")

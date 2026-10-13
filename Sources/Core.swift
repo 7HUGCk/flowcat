@@ -135,3 +135,17 @@ func volume(_ bytes: UInt64) -> String {
     }
     return "\(bytes) B"
 }
+
+// Classify presentation only; never subtract relayed bytes or rewrite historical counters.
+enum ProcessTraffic {
+    static func isRelay(_ name: String) -> Bool {
+        let name = name.lowercased()
+        let known = ["verge-mihomo", "mihomo", "clash", "clash verge", "clash verge rev",
+                     "clashx", "clashx pro", "clash meta", "tailscale", "proxifier",
+                     "sing-box", "singbox", "surge", "surge helper", "openvpn", "wireguard"]
+        return known.contains(name) || name == "io.tailscale.ipn.macsys.network-extension"
+    }
+    static func rows(_ processes: [String: Bytes], relay: Bool) -> [(String, Bytes)] {
+        processes.filter { isRelay($0.key) == relay }.map { ($0.key, $0.value) }
+    }
+}

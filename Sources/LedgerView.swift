@@ -24,6 +24,7 @@ struct LedgerView: View {
     @State private var search = ""
     @State private var explanation = false
     @State private var order = 0
+    @State private var showRelays = false
     @State private var loginError = ""
     private var palette: Palette { Palette(dark: scheme == .dark) }
     private var compact: Bool { panelSize.height < 540 }
@@ -33,7 +34,7 @@ struct LedgerView: View {
     private var sortName: String { ["总流量", "下载量", "上传量"][order] }
     private func metric(_ b: Bytes) -> UInt64 { order == 1 ? b.received : order == 2 ? b.sent : b.total }
     private var rows: [(String, Bytes)] {
-        monitor.rows.filter { search.isEmpty || $0.0.localizedCaseInsensitiveContains(search) }.sorted {
+        ProcessTraffic.rows(record.processes, relay: showRelays).filter { search.isEmpty || $0.0.localizedCaseInsensitiveContains(search) }.sorted {
             metric($0.1) == metric($1.1) ? $0.0 < $1.0 : metric($0.1) > metric($1.1)
         }
     }
@@ -154,10 +155,19 @@ struct LedgerView: View {
     }
     private var processSection: some View {
         VStack(spacing: 10) {
-            HStack {
-                Text("进程排行").font(.system(size: 12, weight: .semibold))
-                Text("\(rows.count)").font(.system(size: 11)).foregroundStyle(palette.secondary)
-                Spacer()
+            HStack(spacing: 8) {
+                if panelSize.width >= 360 {
+                    Text(showRelays ? "代理排行" : "应用排行").font(.system(size: 12, weight: .semibold))
+                        .lineLimit(1)
+                    Text("\(rows.count)").font(.system(size: 11)).foregroundStyle(palette.secondary)
+                }
+                Picker("流量类型", selection: $showRelays) {
+                    Text("应用").tag(false)
+                    Text("代理").tag(true)
+                }.pickerStyle(.segmented).labelsHidden().controlSize(.small)
+                    .frame(width: panelSize.width >= 360 ? 112 : 96)
+                    .accessibilityLabel("流量类型").help("切换应用与代理、VPN 转发排行")
+                Spacer(minLength: 0)
                 Menu {
                     Picker("排序方式", selection: $order) {
                         Text("总流量").tag(0); Text("下载量").tag(1); Text("上传量").tag(2)
@@ -166,6 +176,9 @@ struct LedgerView: View {
                     .font(.system(size: 11)).foregroundStyle(palette.secondary)
                     .menuStyle(.borderlessButton).fixedSize().accessibilityLabel("排序方式")
             }
+            Text(showRelays ? "包含其他应用转发及本地连接流量，请勿与应用相加。" : "应用原始进程计数；代理与 VPN 转发另列，不代表账单。")
+                .font(.system(size: 11)).foregroundStyle(palette.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 7) {
                 Image(systemName: "magnifyingglass").font(.system(size: 11)).foregroundStyle(palette.secondary)
                 TextField("搜索进程", text: $search).font(.system(size: 12)).textFieldStyle(.plain).accessibilityLabel("搜索进程")
@@ -241,7 +254,7 @@ struct LedgerView: View {
     private var emptyState: some View {
         VStack(spacing: 9) {
             Image(systemName: search.isEmpty ? "chart.bar" : "magnifyingglass").font(.system(size: 23)).foregroundStyle(palette.secondary)
-            Text(!search.isEmpty ? "没有匹配的进程" : monitor.paused ? "统计已暂停" : hasError ? "暂时无法读取流量" : monitor.lastSample == nil ? "正在建立统计基线" : "这个时段还没有记录")
+            Text(!search.isEmpty ? "没有匹配的进程" : monitor.paused ? "统计已暂停" : hasError ? "暂时无法读取流量" : monitor.lastSample == nil ? "正在建立统计基线" : showRelays ? "这个时段没有已识别的代理记录" : "这个时段还没有应用记录")
                 .font(.system(size: 12, weight: .medium))
             Text(!search.isEmpty ? "试试进程名称的一部分。" : "流量从工具运行后累计，未运行的历史无法补算。")
                 .font(.system(size: 11)).foregroundStyle(palette.secondary).multilineTextAlignment(.center)
@@ -269,7 +282,7 @@ struct LedgerView: View {
             }.font(.system(size: 11)).foregroundStyle(palette.secondary)
             if explanation {
                 ScrollView {
-                    Text("整机总量来自物理网卡，包含局域网流量，不等于运营商账单。进程排行包含代理与 VPN 转发，请勿相加。\n\n每 10 秒采样，每分钟保存。网络无法识别时只记录全部。\n\n开始记录：\(monitor.ledger.firstStarted.formatted(date: .numeric, time: .shortened))")
+                    Text("整机总量来自物理网卡，包含局域网流量，不等于运营商账单。应用与代理转发分开展示，均为进程计数，请勿相加。代理历史无法反推原始应用；没有应用记录不表示没有流量。\n\n每 10 秒采样，每分钟保存。网络无法识别时只记录全部。\n\n开始记录：\(monitor.ledger.firstStarted.formatted(date: .numeric, time: .shortened))")
                         .font(.system(size: 11)).foregroundStyle(palette.secondary).lineSpacing(3)
                         .frame(maxWidth: .infinity, alignment: .leading).padding(10)
                 }.frame(height: 96).background(palette.surface).clipShape(RoundedRectangle(cornerRadius: 7))
@@ -280,7 +293,7 @@ struct LedgerView: View {
         }
     }
     private func isRelay(_ name: String) -> Bool {
-        ["tailscale", "mihomo", "clash", "proxifier", "vpn"].contains { name.lowercased().contains($0) }
+        ProcessTraffic.isRelay(name)
     }
     private func setLogin(_ enabled: Bool) {
         do {
