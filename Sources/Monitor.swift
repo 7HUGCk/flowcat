@@ -32,7 +32,7 @@ final class TrafficMonitor: ObservableObject {
     @Published var download: Double = 0
     @Published var upload: Double = 0
     @Published var period = 0
-    @Published var scope: TrafficScope = .all
+    @Published var scope: TrafficScope = .internet
     @Published var selectedNetwork = "__all__"
     @Published var currentNetwork = NetworkContext(key: "__all__", name: "全部网络", identified: false)
     @Published var paused = false
