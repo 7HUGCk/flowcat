@@ -102,16 +102,27 @@ struct LedgerView: View {
                     .frame(width: min(144, panelSize.width * 0.32), height: 28)
                     .help("按 Wi-Fi 名称筛选历史流量").accessibilityLabel("统计网络")
             }
-            Label(monitor.currentNetwork.identified ? "当前连接 · \(monitor.currentNetwork.name)" : "正在按全部网络记录",
-                  systemImage: monitor.currentNetwork.identified ? "wifi" : "network")
-                .font(.system(size: 11)).foregroundStyle(palette.secondary)
-                .lineLimit(1).truncationMode(.middle).help(monitor.currentNetwork.name)
+            Picker("流量范围", selection: $monitor.scope) {
+                Text("全部流量").tag(TrafficScope.all)
+                Text("互联网").tag(TrafficScope.internet)
+                Text("局域网").tag(TrafficScope.local)
+            }.pickerStyle(.segmented).labelsHidden().controlSize(.small).accessibilityLabel("流量范围")
+            Button {
+                if monitor.currentNetwork.identified { monitor.selectedNetwork = monitor.currentNetwork.name }
+            } label: {
+                Label(monitor.currentNetwork.identified ? "当前连接 · \(monitor.currentNetwork.name)" : "正在按全部网络记录",
+                      systemImage: monitor.currentNetwork.identified ? "wifi" : "network")
+                    .font(.system(size: 11)).foregroundStyle(palette.secondary)
+                    .lineLimit(1).truncationMode(.middle)
+            }.buttonStyle(.plain).disabled(!monitor.currentNetwork.identified)
+                .help(monitor.currentNetwork.identified ? "查看当前 Wi-Fi 的流量" : "无法识别网络时按全部网络记录")
+                .accessibilityLabel(monitor.currentNetwork.identified ? "切换到当前网络 \(monitor.currentNetwork.name)" : "正在按全部网络记录")
         }
     }
     private var summary: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("\(periodName)累计").font(.system(size: 11, weight: .medium)).foregroundStyle(palette.secondary)
+                Text("\(periodName)\(monitor.scope == .all ? "累计" : monitor.scope == .internet ? "互联网" : "局域网")").font(.system(size: 11, weight: .medium)).foregroundStyle(palette.secondary)
                 Spacer()
                 Text(String(format: "覆盖 %.1f 小时", record.monitoredSeconds / 3600))
                     .font(.system(size: 11)).foregroundStyle(palette.secondary).monospacedDigit()
@@ -125,6 +136,15 @@ struct LedgerView: View {
             HStack(spacing: 18) {
                 metricLabel("下载", bytes: record.physical.received, symbol: "arrow.down")
                 metricLabel("上传", bytes: record.physical.sent, symbol: "arrow.up")
+            }
+            if monitor.scope != .all {
+                Text(record.breakdown == nil ? "此时段没有分项记录；旧历史无法补分。" : "连接估算 · 仅覆盖升级后采样，遗漏短时连接与未知对端；分项不与网卡总量相加。")
+                    .font(.system(size: 10)).foregroundStyle(palette.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("网卡总量包含局域网备份，查看上网消耗请切换互联网。")
+                    .font(.system(size: 10)).foregroundStyle(palette.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Rectangle().fill(palette.border).frame(height: 0.5)
             ViewThatFits(in: .horizontal) {
@@ -256,7 +276,7 @@ struct LedgerView: View {
             Image(systemName: search.isEmpty ? "chart.bar" : "magnifyingglass").font(.system(size: 23)).foregroundStyle(palette.secondary)
             Text(!search.isEmpty ? "没有匹配的进程" : monitor.paused ? "统计已暂停" : hasError ? "暂时无法读取流量" : monitor.lastSample == nil ? "正在建立统计基线" : showRelays ? "这个时段没有已识别的代理记录" : "这个时段还没有应用记录")
                 .font(.system(size: 12, weight: .medium))
-            Text(!search.isEmpty ? "试试进程名称的一部分。" : "流量从工具运行后累计，未运行的历史无法补算。")
+            Text(!search.isEmpty ? "试试进程名称的一部分。" : monitor.scope != .all ? "分项从升级后累计；无记录不表示实际流量为零。" : "流量从工具运行后累计，未运行的历史无法补算。")
                 .font(.system(size: 11)).foregroundStyle(palette.secondary).multilineTextAlignment(.center)
             if !search.isEmpty { Button("清除搜索") { search = "" }.controlSize(.small) }
             else if monitor.paused { Button("继续记录") { monitor.togglePause() }.controlSize(.small) }
@@ -282,7 +302,7 @@ struct LedgerView: View {
             }.font(.system(size: 11)).foregroundStyle(palette.secondary)
             if explanation {
                 ScrollView {
-                    Text("整机总量来自物理网卡，包含局域网流量，不等于运营商账单。应用与代理转发分开展示，均为进程计数，请勿相加。代理历史无法反推原始应用；没有应用记录不表示没有流量。\n\n每 10 秒采样，每分钟保存。网络无法识别时只记录全部。\n\n开始记录：\(monitor.ledger.firstStarted.formatted(date: .numeric, time: .shortened))")
+                    Text("整机总量来自物理网卡，包含局域网流量，不等于运营商账单。应用与代理转发分开展示，均为进程计数，请勿相加。代理历史无法反推原始应用；没有应用记录不表示没有流量。\n\n互联网／局域网按物理接口连接对端估算，排除本地代理与虚拟接口。未知对端、短时连接、协议开销可能遗漏；VPN 仅统计外层连接，旧历史无法补分。\n\n每 10 秒采样，每分钟保存。网络无法识别时只记录全部。\n\n开始记录：\(monitor.ledger.firstStarted.formatted(date: .numeric, time: .shortened))")
                         .font(.system(size: 11)).foregroundStyle(palette.secondary).lineSpacing(3)
                         .frame(maxWidth: .infinity, alignment: .leading).padding(10)
                 }.frame(height: 96).background(palette.surface).clipShape(RoundedRectangle(cornerRadius: 7))

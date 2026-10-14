@@ -110,4 +110,56 @@ expect(ProcessTraffic.rows(relayHistory, relay: true).count == 2, "relay view re
 expect(!ProcessTraffic.isRelay("My VPN Notes") && !ProcessTraffic.isRelay("clash-game"), "unrelated names are not hidden by substring matching")
 expect(ProcessTraffic.isRelay("Clash Verge") && ProcessTraffic.isRelay("MIHOMO"), "known app and core names use case-insensitive classification")
 expect(ProcessTraffic.rows(relayHistory, relay: false).first(where: { $0.0 == "Google Chrome" })?.1.received == 100 && relayHistory["verge-mihomo"]?.total == 200, "presentation preserves app bytes and original relay history without redistribution")
-print("All 43 checks passed.")
+let expanded = """
+,interface,bytes_in,bytes_out,
+kernel_task.0,,1000,2000,
+tcp4 192.168.20.181:50001<->192.168.20.2:445,en0,1000,2000,
+Chrome.123,,500,600,
+tcp4 192.168.20.181:50002<->8.8.8.8:443,en0,500,600,
+tcp4 127.0.0.1:50003<->127.0.0.1:7890,lo0,700,800,
+tcp4 198.18.0.1:50004<->198.18.0.2:443,utun1024,900,1000,
+tcp6 240e::1.50005<->2606:4700::1111.443,en0,50,60,
+udp4 *:5353<->*:*,en0,20,30,
+"""
+let expandedProcesses = Parsers.processes(expanded)
+expect(expandedProcesses.count == 2 && expandedProcesses["Chrome.123"]?.bytes.sent == 600, "expanded nettop retains process summaries without counting connection rows twice")
+let connections = ConnectionTraffic.parse(expanded)
+expect(connections.count == 3, "connection scope excludes loopback, fake-IP tunnel and unknown UDP peer")
+expect(connections.values.filter { $0.scope == .local }.count == 1, "SMB private destination is local traffic")
+expect(connections.values.filter { $0.scope == .internet }.count == 2, "global IPv4 and IPv6 destinations are internet traffic")
+expect(ConnectionTraffic.addressScope("10.0.0.1") == .local && ConnectionTraffic.addressScope("172.31.1.2") == .local && ConnectionTraffic.addressScope("192.168.1.2") == .local, "all RFC1918 private ranges classified local")
+expect(ConnectionTraffic.addressScope("fe80::1%en0") == .local && ConnectionTraffic.addressScope("fd12::1") == .local && ConnectionTraffic.addressScope("224.0.0.251") == .local, "link-local, IPv6 ULA and local multicast classified local")
+expect(ConnectionTraffic.addressScope("127.0.0.1") == nil && ConnectionTraffic.addressScope("::1") == nil && ConnectionTraffic.addressScope("100.90.79.37") == nil && ConnectionTraffic.addressScope("198.18.0.30") == nil, "loopback overlay and fake-IP excluded from internet estimate")
+expect(ConnectionTraffic.addressScope("") == nil && ConnectionTraffic.addressScope("*") == nil && ConnectionTraffic.addressScope("999.1.2.3") == nil && ConnectionTraffic.addressScope("2001:db8::1") == nil, "malformed and reserved addresses do not become internet")
+expect(ConnectionTraffic.addressScope("::ffff:192.168.1.2") == .local && ConnectionTraffic.addressScope("::ffff:8.8.8.8") == .internet, "IPv4-mapped IPv6 classified by embedded address")
+var newerConnections = connections
+for key in newerConnections.keys { newerConnections[key]!.bytes.add(Bytes(received: 10, sent: 20)) }
+let breakdown = ConnectionTraffic.delta(current: newerConnections, previous: connections, seconds: 10, names: ["123": "Google Chrome"])
+expect(breakdown.local == Bytes(received: 10, sent: 20) && breakdown.internet == Bytes(received: 20, sent: 40), "socket baselines accumulate interval traffic by address scope")
+expect(breakdown.localProcesses["kernel_task"]?.sent == 20 && breakdown.internetProcesses["Google Chrome"]?.sent == 40, "kernel SMB and app helper attribution survive classification")
+expect(ConnectionTraffic.delta(current: connections, previous: [:], seconds: 10, names: [:]).internet.total == 0, "new connections establish baseline rather than backfilling lifetime bytes")
+expect(ConnectionTraffic.delta(current: connections, previous: newerConnections, seconds: 10, names: [:]).local.total == 0, "connection counter reset cannot inflate traffic")
+var scopedLedger = Ledger(firstStarted: date)
+scopedLedger.add(day: "2026-10-10", physical: Bytes(sent: 1000), processes: ["kernel_task": Bytes(sent: 900)], seconds: 10,
+ network: NetworkContext(key: "wifi:Home", name: "Home", identified: true), breakdown: breakdown)
+let scopedRecord = scopedLedger.sum(keys: ["2026-10-10"], networkName: "Home")
+expect(scopedRecord.scoped(.all).physical.sent == 1000 && scopedRecord.scoped(.local).physical.sent == 20 && scopedRecord.scoped(.internet).physical.sent == 40, "SSID and date filters preserve physical total separately from connection estimates")
+expect(scopedRecord.scoped(.local).monitoredSeconds == 10 && scopedRecord.scoped(.local).processes["kernel_task"]?.sent == 20, "scoped coverage and process ranking use the same classified intervals")
+let scopedRestored = try JSONDecoder().decode(Ledger.self, from: JSONEncoder().encode(scopedLedger))
+expect(scopedRestored.sum(keys: ["2026-10-10"]).breakdown?.local.sent == 20, "scope estimates survive history round trip")
+expect(restored.sum(keys: monthKeys).breakdown == nil && restored.sum(keys: monthKeys).scoped(.internet).monitoredSeconds == 0, "old history cannot fabricate internet classification or coverage")
+scopedLedger.add(day: "2026-10-10", physical: Bytes(sent: 3000), processes: [:], seconds: 30)
+expect(scopedLedger.sum(keys: ["2026-10-10"]).monitoredSeconds == 40 && scopedLedger.sum(keys: ["2026-10-10"]).scoped(.internet).monitoredSeconds == 10, "mixed old and new history reports classification coverage without rewriting old totals")
+let subnetText = """
+en0: flags=8863<UP> mtu 1500
+    inet 192.168.20.181 netmask 0xffffff00 broadcast 192.168.20.255
+    inet6 240e:445:50:bc51::1 prefixlen 64 autoconf
+utun1: flags=8051<UP> mtu 1380
+    inet6 2606:4700::1 prefixlen 32
+"""
+let localSubnets = LocalSubnet.parse(subnetText)
+expect(localSubnets.count == 2, "only physical-interface subnets affect locality")
+expect(ConnectionTraffic.addressScope("240e:445:50:bc51::2", localSubnets: localSubnets) == .local, "global IPv6 on the same LAN subnet is not internet")
+expect(ConnectionTraffic.addressScope("240e:445:50:bc52::2", localSubnets: localSubnets) == .internet && ConnectionTraffic.addressScope("2606:4700::1111", localSubnets: localSubnets) == .internet, "different global IPv6 subnet and tunnel prefixes do not masquerade as LAN")
+expect(LocalSubnet(address: [192,168,20,181], prefix: 24).contains("192.168.20.255") && !LocalSubnet(address: [192,168,20,181], prefix: 24).contains("192.168.21.1"), "IPv4 subnet masks respect boundary and broadcast address")
+print("All 65 checks passed.")

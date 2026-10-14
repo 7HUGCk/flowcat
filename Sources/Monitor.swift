@@ -32,6 +32,7 @@ final class TrafficMonitor: ObservableObject {
     @Published var download: Double = 0
     @Published var upload: Double = 0
     @Published var period = 0
+    @Published var scope: TrafficScope = .all
     @Published var selectedNetwork = "__all__"
     @Published var currentNetwork = NetworkContext(key: "__all__", name: "全部网络", identified: false)
     @Published var paused = false
@@ -41,6 +42,7 @@ final class TrafficMonitor: ObservableObject {
     var onUpdate: (() -> Void)?
     private var timer: Timer?
     private var inFlight = false
+    private var oldConnections: [String: ConnectionCounter] = [:]
     private var oldProcesses: [String: ProcessCounter] = [:]
     private var oldInterfaces: [String: Bytes] = [:]
     private var oldTime: Date?
@@ -72,7 +74,7 @@ final class TrafficMonitor: ObservableObject {
     }
     var selected: DayRecord {
         ledger.sum(keys: DateKeys.keys(period: period, now: Date(), available: Array(ledger.days.keys)),
-                   networkName: selectedNetwork == "__all__" ? nil : selectedNetwork)
+                   networkName: selectedNetwork == "__all__" ? nil : selectedNetwork).scoped(scope)
     }
     var networkNames: [String] {
         guard currentNetwork.identified else { return [] }
@@ -130,11 +132,12 @@ final class TrafficMonitor: ObservableObject {
         let samplingNetwork = context
         queue.async { [weak self] in
           autoreleasepool {
-            let proc = command("/usr/bin/nettop", ["-P", "-L", "1", "-n", "-J", "bytes_in,bytes_out"])
+            let proc = command("/usr/bin/nettop", ["-L", "1", "-n", "-J", "interface,bytes_in,bytes_out"])
             let net = command("/usr/sbin/netstat", ["-ibn"])
+            let addresses = command("/sbin/ifconfig", [])
             let names = command("/bin/ps", ["-axo", "pid=,comm="])
             let now = Date()
-            DispatchQueue.main.async { self?.apply(proc: proc, net: net, names: names.text, now: now, network: samplingNetwork) }
+            DispatchQueue.main.async { self?.apply(proc: proc, net: net, names: names.text, addresses: addresses.text, now: now, network: samplingNetwork) }
           }
         }
     }
@@ -153,7 +156,7 @@ final class TrafficMonitor: ObservableObject {
         }
         return result
     }
-    private func apply(proc: CommandResult, net: CommandResult, names: String, now: Date, network: NetworkContext) {
+    private func apply(proc: CommandResult, net: CommandResult, names: String, addresses: String, now: Date, network: NetworkContext) {
         inFlight = false
         guard !paused else { oldTime = nil; return }
         let processes = Parsers.processes(proc.text), interfaces = Parsers.interfaces(net.text)
@@ -161,6 +164,7 @@ final class TrafficMonitor: ObservableObject {
             status = "采集不可用：请从 Finder 启动，勿在受限沙箱中运行"
             download = 0; upload = 0; oldTime = nil; onUpdate?(); return
         }
+        let connections = ConnectionTraffic.parse(proc.text, localSubnets: LocalSubnet.parse(addresses))
         let mapping = processNames(names)
         for (_, item) in mapping where item.1.hasSuffix(".app") { appPaths[item.0] = item.1 }
         if let previous = oldTime {
@@ -187,12 +191,15 @@ final class TrafficMonitor: ObservableObject {
                 }
                 let bucket = activeInterfaces.count > 1
                     ? NetworkContext(key: "__all__", name: "全部网络", identified: false) : network
-                ledger.add(day: DateKeys.day(now), physical: physical, processes: deltas, seconds: interval, network: bucket)
+                let breakdown = ConnectionTraffic.delta(current: connections, previous: oldConnections,
+                    seconds: interval, names: mapping.mapValues { $0.0 })
+                ledger.add(day: DateKeys.day(now), physical: physical, processes: deltas, seconds: interval, network: bucket, breakdown: breakdown)
                 download = Double(physical.received) / interval
                 upload = Double(physical.sent) / interval
                 if now.timeIntervalSince(lastSaved) >= 60 { save(); lastSaved = now }
             } else { download = 0; upload = 0 }
         }
+        oldConnections = connections
         oldProcesses = processes; oldInterfaces = interfaces; oldTime = now; oldNetwork = network; lastSample = now
         status = brokenStore == nil ? "采集中 · 每 10 秒更新" : "采集中 · 旧历史损坏文件已保留"
         onUpdate?()
@@ -232,6 +239,19 @@ final class TrafficMonitor: ObservableObject {
                     content += "\(key),\(csvField(history.name)),\(csvField(name)),\(b.received),\(b.sent),\n"
                 }
             }
+        }
+        func scopeCSV(day: String, network: String, record: DayRecord) {
+            guard let b = record.breakdown else { return }
+            for (label, bytes, processes) in [("互联网（连接估算）", b.internet, b.internetProcesses), ("局域网（连接估算）", b.local, b.localProcesses)] {
+                content += "\(day),\(csvField(network)),\(label),\(bytes.received),\(bytes.sent),\(Int(b.seconds))\n"
+                for (name, bytes) in processes.sorted(by: { $0.key < $1.key }) {
+                    content += "\(day),\(csvField(network)),\(csvField(label + " · " + name)),\(bytes.received),\(bytes.sent),\n"
+                }
+            }
+        }
+        for (day, record) in ledger.days.sorted(by: { $0.key < $1.key }) { scopeCSV(day: day, network: "全部网络", record: record) }
+        for history in ledger.networks.values.sorted(by: { $0.name < $1.name }) {
+            for (day, record) in history.days.sorted(by: { $0.key < $1.key }) { scopeCSV(day: day, network: history.name, record: record) }
         }
         do { try ("\u{FEFF}" + content).write(to: url, atomically: true, encoding: .utf8) }
         catch { status = "导出失败：\(error.localizedDescription)" }

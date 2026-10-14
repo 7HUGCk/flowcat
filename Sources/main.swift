@@ -8,6 +8,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
     let popover = NSPopover()
     var hosting: NSHostingController<LedgerView>?
     var started = false
+    private var outsideMouseMonitor: Any?
+    private var localMouseMonitor: Any?
+    private var menuObservers: [NSObjectProtocol] = []
+    private var menuDepth = 0
+    private var menuTracking: Bool { menuDepth > 0 }
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Avoid two samplers double-counting the same computer after repeated clicks.
         let identifier = Bundle.main.bundleIdentifier ?? "local.gww.trafficledger"
@@ -47,6 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
             configurePanel()
             NSApp.activate(ignoringOtherApps: true)
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            startOutsideDismissal()
         }
     }
     private func showContextMenu() {
@@ -81,6 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         if item.menu === menu { item.menu = nil }
     }
     func popoverDidClose(_ notification: Notification) {
+        stopOutsideDismissal()
         // Release the view graph and decoded icons while only the sampler runs.
         DispatchQueue.main.async { [weak self] in
             guard let self, !self.popover.isShown else { return }
@@ -88,6 +95,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
             self.hosting = nil
             self.monitor.clearIcons()
         }
+    }
+    private func startOutsideDismissal() {
+        stopOutsideDismissal()
+        // Native picker menus can leave transient popovers open after tracking.
+        // Keep menu item selection intact, then explicitly close on the next outside click.
+        let center = NotificationCenter.default
+        menuObservers.append(center.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { [weak self] _ in self?.menuDepth += 1 })
+        menuObservers.append(center.addObserver(forName: NSMenu.didEndTrackingNotification, object: nil, queue: .main) { [weak self] _ in if let self { self.menuDepth = max(0, self.menuDepth - 1) } })
+        let events: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        outsideMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: events) { [weak self] _ in
+            guard let self, self.popover.isShown, !self.menuTracking else { return }
+            self.popover.performClose(nil)
+        }
+        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: events) { [weak self] event in
+            guard let self, self.popover.isShown, !self.menuTracking else { return event }
+            if event.window?.level == .popUpMenu { return event }
+            let point = NSEvent.mouseLocation
+            if let window = self.popover.contentViewController?.view.window, window.frame.contains(point) { return event }
+            if let button = self.item.button, let window = button.window,
+                window.convertToScreen(button.convert(button.bounds, to: nil)).contains(point) { return event }
+            self.popover.performClose(nil)
+            return event
+        }
+    }
+    private func stopOutsideDismissal() {
+        if let outsideMouseMonitor { NSEvent.removeMonitor(outsideMouseMonitor) }
+        if let localMouseMonitor { NSEvent.removeMonitor(localMouseMonitor) }
+        outsideMouseMonitor = nil; localMouseMonitor = nil
+        for observer in menuObservers { NotificationCenter.default.removeObserver(observer) }
+        menuObservers.removeAll(); menuDepth = 0
     }
     @MainActor @objc private func checkUpdates() { UpdateChecker.shared.check() }
     @objc private func toggleRecording() { monitor.togglePause() }
@@ -123,7 +160,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         }
         popover.contentSize = size
     }
-    func applicationWillTerminate(_ notification: Notification) { if started { monitor.save() } }
+    func applicationWillTerminate(_ notification: Notification) { stopOutsideDismissal(); if started { monitor.save() } }
 }
 let app = NSApplication.shared
 if let index = CommandLine.arguments.firstIndex(of: "--render-preview"), CommandLine.arguments.count > index + 1 {
