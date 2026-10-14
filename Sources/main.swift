@@ -21,8 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
             button.image = NSImage(systemSymbolName: "chart.bar.xaxis", accessibilityDescription: "流量喵")
-            button.imagePosition = .imageLeading
-            button.title = " ↓0 KB/s"
+            button.imagePosition = .imageOnly
             button.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
             button.target = self; button.action = #selector(toggle)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -31,7 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         popover.delegate = self
         monitor.onUpdate = { [weak self] in
             guard let self else { return }
-            self.item.button?.title = self.monitor.paused ? " 暂停" : " ↓\(volume(UInt64(max(0, self.monitor.download))))/s"
+            self.item.button?.title = ""
             self.item.button?.toolTip = "流量喵 · 今日 \(volume(self.monitor.ledger.days[DateKeys.day(Date())]?.physical.total ?? 0))"
         }
         started = true; monitor.start()
