@@ -102,21 +102,25 @@ struct LedgerView: View {
                     .frame(width: min(144, panelSize.width * 0.32), height: 28)
                     .help("按 Wi-Fi 名称筛选历史流量").accessibilityLabel("统计网络")
             }
-            Picker("流量范围", selection: $monitor.scope) {
-                Text("全部流量").tag(TrafficScope.all)
-                Text("互联网").tag(TrafficScope.internet)
-                Text("局域网").tag(TrafficScope.local)
-            }.pickerStyle(.segmented).labelsHidden().controlSize(.small).accessibilityLabel("流量范围")
-            Button {
-                if monitor.currentNetwork.identified { monitor.selectedNetwork = monitor.currentNetwork.name }
-            } label: {
-                Label(monitor.currentNetwork.identified ? "当前连接 · \(monitor.currentNetwork.name)" : "正在按全部网络记录",
-                      systemImage: monitor.currentNetwork.identified ? "wifi" : "network")
-                    .font(.system(size: 11)).foregroundStyle(palette.secondary)
-                    .lineLimit(1).truncationMode(.middle)
-            }.buttonStyle(.plain).disabled(!monitor.currentNetwork.identified)
-                .help(monitor.currentNetwork.identified ? "查看当前 Wi-Fi 的流量" : "无法识别网络时按全部网络记录")
-                .accessibilityLabel(monitor.currentNetwork.identified ? "切换到当前网络 \(monitor.currentNetwork.name)" : "正在按全部网络记录")
+            HStack(spacing: 10) {
+                Picker("流量范围", selection: $monitor.scope) {
+                    Text("全部流量").tag(TrafficScope.all)
+                    Text("互联网").tag(TrafficScope.internet)
+                    Text("局域网").tag(TrafficScope.local)
+                }.pickerStyle(.segmented).labelsHidden().controlSize(.small).accessibilityLabel("流量范围")
+                    .frame(width: min(204, panelSize.width * 0.46), alignment: .leading)
+                Button {
+                    if monitor.currentNetwork.identified { monitor.selectedNetwork = monitor.currentNetwork.name }
+                } label: {
+                    Label(monitor.currentNetwork.identified ? "当前连接 · \(monitor.currentNetwork.name)" : "正在按全部网络记录",
+                          systemImage: monitor.currentNetwork.identified ? "wifi" : "network")
+                        .font(.system(size: 11)).foregroundStyle(palette.secondary)
+                        .lineLimit(1).truncationMode(.middle)
+                }.buttonStyle(.plain).disabled(!monitor.currentNetwork.identified)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .help(monitor.currentNetwork.identified ? "查看当前 Wi-Fi 的流量：\(monitor.currentNetwork.name)" : "无法识别网络时按全部网络记录")
+                    .accessibilityLabel(monitor.currentNetwork.identified ? "切换到当前网络 \(monitor.currentNetwork.name)" : "正在按全部网络记录")
+            }
         }
     }
     private var summary: some View {
